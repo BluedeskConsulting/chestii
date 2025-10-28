@@ -1,0 +1,99 @@
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: ingress-ip-filter
+  namespace: istio-system
+spec:
+  selector:
+    matchLabels:
+      istio: ingressgateway
+  action: ALLOW
+  rules:
+  - from:
+    - source:
+        ipBlocks: ["203.0.113.0/24"]  
+
+
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: deny-cross-namespace
+  namespace: testnginx
+spec:
+  action: DENY
+  rules:
+  - from:
+    - source:
+        namespaces: ["*"]
+    to:
+    - operation: {}
+
+
+
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-same-namespace
+  namespace: testnginx
+spec:
+  action: ALLOW
+  rules:
+  - from:
+    - source:
+        namespaces: ["testnginx"]
+
+
+
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: namespace-allowlist
+  namespace: testnginx
+spec:
+  action: ALLOW
+  rules:
+  - from:
+    - source:
+        namespaces: ["testnginx", "frontend"]
+
+
+Example: Allow one IP, block all others
+Apply this in the namespace of your service (or on the ingress gateway if you want to block externally).
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-only-one-ip
+  namespace: istio-system   # Apply here if you want to restrict ingress gateway
+spec:
+  selector:
+    matchLabels:
+      istio: ingressgateway   # target the Istio ingress gateway
+  action: ALLOW
+  rules:
+  - from:
+    - source:
+        ipBlocks: ["203.0.113.5/32"]   # ✅ only this IP is allowed
+
+💡 What this does:
+Any traffic hitting your ingress gateway (from outside the cluster) will only be accepted if it originates from 203.0.113.5.
+Everything else is implicitly denied — Istio applies deny-by-default when an AuthorizationPolicy exists.
+🧱 3️⃣ Example for internal mesh traffic
+If you instead want to restrict traffic to your application inside the mesh:
+
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-ip
+  namespace: testnginx
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  action: ALLOW
+  rules:
+  - from:
+    - source:
+        ipBlocks: ["10.0.0.12/32"]  # internal IP of another pod or node
+
+
+
